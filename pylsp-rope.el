@@ -30,13 +30,19 @@
 
 (require 'lsp-mode)
 
+(defun pylsp-rope--plist-subset-p (subset-plist full-plist)
+  "Return t if SUBSET-PLIST is a subset of FULL-PLIST."
+  (cl-loop for (key value) on subset-plist by #'cddr
+           always (equal (plist-get full-plist key) value)))
+
 (defun pylsp-rope-lsp-execute-code-action-by-command (command-name &optional key-values)
   "Execute code action by COMMAND-NAME, considering only certain KEY-VALUES."
   (if-let ((action (->> (lsp-get-or-calculate-code-actions nil)
-                        (-filter (-lambda ((&CodeAction :command? ((&Command :command) (&Command :arguments?))))
-                                   (let (())
+                        (-filter (-lambda ((&CodeAction :command? (&Command :command :arguments?)))
+                                   (let ((args-plist (and arguments? (aref arguments? 0)))) ; No eval or quote needed.
                                      (and (string= command-name command)
-                                          (and arguments? (pylsp-rope--match-arguments key-values arguments?))))))
+                                          (or (not key-values)
+                                              (pylsp-rope--plist-subset-p key-values args-plist)))))) ;turning args into list
                         lsp--select-action)))
       (lsp-execute-code-action action)
     (signal 'lsp-no-code-actions `(,command-name))))
@@ -57,6 +63,7 @@ CODE-ACTION-COMMAND, considering only KEY-VALUES."
        ,(format "Execute the `%s` code action with specific\n attributes, if available." command-name)
        (interactive)
        (let ((lsp-auto-execute-action t))
+         (t/print ,command-name)
          (condition-case nil
              (pylsp-rope-lsp-execute-code-action-by-command ,command-name ',key-values)
            (lsp-no-code-actions
@@ -69,11 +76,11 @@ CODE-ACTION-COMMAND, considering only KEY-VALUES."
 (pylsp-rope-make-interactive-code-action local-to-field "pylsp_rope.refactor.local_to_field")
 (pylsp-rope-make-interactive-code-action organize-import "pylsp_rope.source.organize_import")
 (pylsp-rope-make-interactive-code-action introduce-parameter "pylsp_rope.refactor.introduce_parameter")
-(pylsp-rope-make-interactive-code-action generate-variable "pylsp_rope.quickfix.generate" '((:generate_kind "variable")))
-(pylsp-rope-make-interactive-code-action generate-function "pylsp_rope.quickfix.generate" '((:generate_kind "function")))
-(pylsp-rope-make-interactive-code-action generate-class "pylsp_rope.quickfix.generate" ((:generate_kind "class")))
-(pylsp-rope-make-interactive-code-action generate-module "pylsp_rope.quickfix.generate" ((:generate_kind "module")))
-(pylsp-rope-make-interactive-code-action generate-package "pylsp_rope.quickfix.generate" ((:generate_kind "package")))
+(pylsp-rope-make-interactive-code-action generate-variable "pylsp_rope.quickfix.generate" (:generate_kind "variable"))
+(pylsp-rope-make-interactive-code-action generate-function "pylsp_rope.quickfix.generate" (:generate_kind "function"))
+(pylsp-rope-make-interactive-code-action generate-class "pylsp_rope.quickfix.generate" (:generate_kind "class"))
+(pylsp-rope-make-interactive-code-action generate-module "pylsp_rope.quickfix.generate" (:generate_kind "module"))
+(pylsp-rope-make-interactive-code-action generate-package "pylsp_rope.quickfix.generate" (:generate_kind "package"))
 
 
 (provide 'pylsp-rope)
