@@ -47,14 +47,6 @@
       (lsp-execute-code-action action)
     (signal 'lsp-no-code-actions `(,command-name))))
 
-(defun pylsp-rope--match-arguments (key-values arguments)
-  "Check if KEY-VALUES match in ARGUMENTS list, ignoring other keys."
-  (when (and key-values arguments)
-    (let ((arg-map (car arguments)))  ; Assuming arguments is a list of a single alist.
-      (cl-every (lambda (kv)
-                  (equal (alist-get (car kv) arg-map) (cdr kv)))
-                key-values))))
-
 (defmacro pylsp-rope-make-interactive-code-action (func-name command-name &optional key-values)
   "Define an interactive function FUNC-NAME that executes a specific
 CODE-ACTION-COMMAND, considering only KEY-VALUES."
